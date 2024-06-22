@@ -43,6 +43,7 @@ class QuillHtmlEditor extends StatefulWidget {
     this.loadingBuilder,
     this.inputAction = InputAction.newline,
     this.autoFocus = false,
+    this.isTextSelectable = true,
     this.textStyle = const TextStyle(
       fontStyle: FontStyle.normal,
       fontSize: 20.0,
@@ -67,6 +68,10 @@ class QuillHtmlEditor extends StatefulWidget {
   /// [hintText] is a placeholder, by default, the hint will be 'Description'
   /// We can override the placeholder text by passing hintText to the editor
   final String? hintText;
+
+  /// [isTextSelectable] is used to enable or disable text selection in the
+  /// editor
+  final bool isTextSelectable;
 
   /// [isEnabled] as the name suggests, is used to enable or disable the editor
   /// When it is set to false, the user cannot edit or type in the editor
@@ -258,6 +263,7 @@ class QuillHtmlEditorState extends State<QuillHtmlEditor> {
               if (widget.onEditorCreated != null) {
                 widget.onEditorCreated!();
               }
+              widget.controller.enableTextSelection(widget.isTextSelectable);
               widget.controller._editorLoadedController?.add('');
             });
           },
@@ -502,6 +508,11 @@ class QuillHtmlEditorState extends State<QuillHtmlEditor> {
     return await _webviewController.callJsMethod("enableEditor", [isEnabled]);
   }
 
+  /// a private method to enable/disable text selection in editor
+  Future _enableTextSelection({required bool isEnabled}) async {
+    return await _webviewController.callJsMethod("enableTextSelection", [isEnabled]);
+  }
+
   /// a private method to enable/disable the editor
   Future _setFormat({required String format, required dynamic value}) async {
     try {
@@ -569,6 +580,11 @@ class QuillHtmlEditorState extends State<QuillHtmlEditor> {
         <script>
         $_quillJsScript
         </script>
+        <script>
+          document.addEventListener('contextmenu', function(event) {
+              event.preventDefault();
+          });
+        </script>
         <style>
         /*!
        * Quill Editor v2.0.0-dev.3
@@ -630,7 +646,6 @@ class QuillHtmlEditorState extends State<QuillHtmlEditor> {
         }
         .ql-editor { 
          font-family: "$_fontFamily", sans-serif !important;
-          -webkit-user-select: text !important;
           padding-left:${widget.padding?.left ?? '0'}px !important;
           padding-right:${widget.padding?.right ?? '0'}px !important;
           padding-top:${widget.padding?.top ?? '0'}px !important;
@@ -1254,6 +1269,15 @@ class QuillHtmlEditorState extends State<QuillHtmlEditor> {
               return '';
             }
             
+            function enableTextSelection(isEnabled){
+              var element = document.getElementsByClassName('ql-editor')[0];
+              if(isEnabled){
+                element.style.userSelect = "text";
+              } else{
+                element.style.userSelect = "none";
+              }
+            }
+            
             function setFormat(format, value) {
             try{
               if(format == 'clean') {
@@ -1447,6 +1471,13 @@ class QuillEditorController {
   void enableEditor(bool enable) async {
     isEnable = enable;
     await _editorKey?.currentState?._enableTextEditor(isEnabled: enable);
+  }
+
+
+  /// [enableTextSelection] method is used to enable/disable text selection in
+  /// editor
+  void enableTextSelection(bool enable) async{
+    await _editorKey?.currentState?._enableTextSelection(isEnabled: enable);
   }
 
   @Deprecated(
